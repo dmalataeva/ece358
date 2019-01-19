@@ -10,12 +10,13 @@
 
 // consts for exponential value gen
 #define LAMBDA 75
-#define VAR_COUNT 50 // NEEDS TO BE OPERATIONAL AT 1000
+#define VAR_COUNT 1000
 
 // consts for uniform value gen
 #define ERV_RAND_MAX 1000
-#define RAND_RANGE_MIN 0
+#define RAND_RANGE_MIN 1
 #define RAND_RANGE_MAX 1000
+#define ROUND_DEC 10000000
 
 
 double uniform_random_variable() {
@@ -23,17 +24,19 @@ double uniform_random_variable() {
     double size = (double)(ERV_RAND_MAX + 1) / range;
     double last = size * range;
     
-    // ensure that (ERV_RAND_MAX + 1 - last) < range
-    // keep re-generating until no bias
+    // keep re-generating until less than last chunk ending
     int var = rand();
-    while (var >= last) var = rand();
+    while (var > last-1) var = rand();
     
     return ((double)(RAND_RANGE_MIN + var) / size)/RAND_RANGE_MAX;
 }
 
 // exp random variable using inverse method & Poisson distribution function
 double exp_random_variable(double u) {
-    return log(1.0-u)*(-1.0/LAMBDA);
+    
+    // Use this to detect a random number of 1.0
+    //if ((double)1.0-u == (double)0.0) printf("zero here\n");
+    return log((double)1.0-u)*(-1.0/LAMBDA);
 }
 
 int main(void) {
@@ -43,7 +46,6 @@ int main(void) {
 
     for (int i=0; i<VAR_COUNT; i++) {
         nums[i] = exp_random_variable(uniform_random_variable());
-        //if (i%50 == 0) printf("nums[%d]:%.20f\n", i, nums[i]);
     }
     
     double meanSum = 0.0;
@@ -58,8 +60,8 @@ int main(void) {
     }
     double variance = varSum/VAR_COUNT;
     
-    printf("Mean: %f\n", mean);
-    printf("Variance: %f\n", variance);
+    printf("Mean: %lf\n", mean);
+    printf("Variance: %lf\n", variance);
     // need a mean of LAMBDA^-1 ==> ~ 0.0133333
     // need variance of LAMBDA^-2 ==> ~ 0.000178
     
