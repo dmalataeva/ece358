@@ -9,14 +9,23 @@
 #include <sys/wait.h>
 
 #define VAR_COUNT 1000
+#define LAMBDA 75
 
-int main(void) {
+int main(int argc, char *argv[]) {
     srand(time(0));
 
     double nums[VAR_COUNT];
+    double lambda = LAMBDA;
+
+    // printf("argc: %d\n",argc);
+
+    if (argc > 1) {
+        lambda = atoi(argv[1]);
+        // printf("argv[1]: %s\n",argv[1]);
+    }
 
     for (int i=0; i<VAR_COUNT; i++) {
-        nums[i] = exp_random_variable(uniform_random_variable());
+        nums[i] = exp_random_variable(lambda);
     }
     
     double meanSum = 0.0;
