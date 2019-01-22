@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     // printf("argc: %d\n",argc);
 
     if (argc > 1) {
-        lambda = atoi(argv[1]);
+        lambda = atof(argv[1]);
         // printf("argv[1]: %s\n",argv[1]);
     }
 
