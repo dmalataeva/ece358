@@ -3,8 +3,28 @@
 
 #include "event_handlers.h"
 
+typedef struct SIM_PROPS_S {
+	double lambda;
+	double L;
+	double alpha;
+	double C;
+	double rho;
+} SIM_PROPS_T;
+extern SIM_PROPS_T simulator_options;
+
+typedef struct SYS_STATS_S {
+	unsigned long int packets_in;
+	unsigned long int packets_out;
+	unsigned long int packets_dropped;
+	unsigned long int observations;
+	unsigned long int idle_count;
+	unsigned long int packet_count;
+} SYS_STATS_T;
+extern SYS_STATS_T system_stats;
+
 // Simulator actions
-void simulator_init();
+void simulator_init(float L, float C, float rho);
+void simulator_clear_queue();
 void simulator_insert_event(EVENT_TYPE_T, double);
 void simulator_advance();
 double simulator_get_last_time(EVENT_TYPE_T);
