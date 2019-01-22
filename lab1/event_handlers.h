@@ -20,4 +20,11 @@ typedef enum EVENT_TYPE_E {
 #define _DEF_HANDLERS(e,h) void h();
 EVENT_DEFINITIONS(_DEF_HANDLERS)
 
+typedef struct EVENT_LOOKUP_S {
+	char name[25];
+	void (*handler)();
+} EVENT_LOOKUP_T;
+#define _DEF_EVENT_LOOKUP(e,h) {#e,h},
+extern EVENT_LOOKUP_T event_lookup[];
+
 #endif
