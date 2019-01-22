@@ -25,12 +25,22 @@ static struct linked_list event_lists[] = {
 SIM_PROPS_T simulator_options = {0};
 SYS_STATS_T system_stats = {0};
 
-void simulator_init(float L, float C, float rho){
+void simulator_init(
+#ifdef FINITE_BUFFER
+	int b_size,
+#endif
+	float L,
+	float C,
+	float rho
+){
 	simulator_options.L = L;
 	simulator_options.C = C;
 	simulator_options.rho = rho;
 	simulator_options.lambda = (rho * C)/L;
 	simulator_options.alpha = simulator_options.lambda * 5;
+#ifdef FINITE_BUFFER
+	simulator_options.buffer_size = b_size;
+#endif
 
 	system_stats.packets_in = 0;
 	system_stats.packets_out = 0;

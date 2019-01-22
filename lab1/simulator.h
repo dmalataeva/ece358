@@ -9,6 +9,9 @@ typedef struct SIM_PROPS_S {
 	double alpha;
 	double C;
 	double rho;
+#ifdef FINITE_BUFFER
+	int buffer_size;
+#endif
 } SIM_PROPS_T;
 extern SIM_PROPS_T simulator_options;
 
@@ -23,7 +26,14 @@ typedef struct SYS_STATS_S {
 extern SYS_STATS_T system_stats;
 
 // Simulator actions
-void simulator_init(float L, float C, float rho);
+void simulator_init(
+#ifdef FINITE_BUFFER
+	int b_size,
+#endif
+	float L,
+	float C,
+	float rho
+	);
 void simulator_clear_queue();
 void simulator_insert_event(EVENT_TYPE_T, double);
 void simulator_advance();

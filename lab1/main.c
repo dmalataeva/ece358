@@ -17,6 +17,9 @@ void usage(char *cmd) {
 
 int main(int argc, char *argv[]) {
 	float max_time = SIM_T;
+#ifdef FINITE_BUFFER
+	int buf_size = 10;
+#endif
 	int i = 1;
 	float rho;
 
@@ -33,6 +36,12 @@ int main(int argc, char *argv[]) {
 					i = i + 1;
 					max_time = atof(argv[i]);
 					break;
+#ifdef FINITE_BUFFER
+				case 'K':
+					i = i + 1;
+					buf_size = atoi(argv[i]);
+					break;
+#endif
 				default:
 					printf("Unknown switch -%c. Aborting.\n", arg[1]);
 					return 1;
@@ -44,10 +53,20 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	printf("rho,pi,po,pd,o,ic,pc,P_IDLE,E[N]\n");
+	printf("rho,P_IDLE,E[N]");
+#ifdef FINITE_BUFFER
+	printf(",P_LOSS");
+#endif
+	printf("\n");
 	while (i < argc && (rho = atof(argv[i]))) {
 
-		simulator_init(SIM_L, SIM_C, rho);
+		simulator_init(
+#ifdef FINITE_BUFFER
+			buf_size,
+#endif
+			SIM_L,
+			SIM_C,
+			rho);
 		srand(time(0));
 
 		double t = exp_random_variable(simulator_options.lambda);
@@ -62,17 +81,16 @@ int main(int argc, char *argv[]) {
 
 		simulator_clear_queue();
 
-		printf("%f,%lu,%lu,%lu,%lu,%lu,%lu,%lf,%lf\n",
+		printf("%f,%lf,%lf",
 			rho,
-			system_stats.packets_in,
-			system_stats.packets_out,
-			system_stats.packets_dropped,
-			system_stats.observations,
-			system_stats.idle_count,
-			system_stats.packet_count,
 			(double)system_stats.idle_count/system_stats.observations,
 			(double)system_stats.packet_count/system_stats.observations
 			);
+#ifdef FINITE_BUFFER
+		printf(",%lf",
+			(double)system_stats.packets_dropped/system_stats.packets_in);
+#endif
+		printf("\n");
 		i = i + 1;
 	}
 
