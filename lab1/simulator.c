@@ -3,17 +3,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+ * Relevant structs used to represent event queue
+ * */
 struct ll_node {
 	struct ll_node *next;
 	struct ll_node *type_next;
 	EVENT_TYPE_T event;
-	double time;
+	double time; // time of arrival?
 };
 
 struct linked_list {
 	struct ll_node *head, *tail;
 };
-static struct linked_list all_events = {0,0};
+
+static struct linked_list all_events = {0,0}; // why initialized as {0,0}?
 // static struct linked_list insertion_order = {0,0};
 
 #define _DEF_LISTS(e,h) {0,0},
@@ -37,7 +41,7 @@ void simulator_init(
 	simulator_options.C = C;
 	simulator_options.rho = rho;
 	simulator_options.lambda = (rho * C)/L;
-	simulator_options.alpha = simulator_options.lambda * 5;
+	simulator_options.alpha = simulator_options.lambda * 5; // should we make this configurable?
 #ifdef FINITE_BUFFER
 	simulator_options.buffer_size = b_size;
 #endif
@@ -126,6 +130,9 @@ void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 
 }
 
+/*
+ * Process current event and advance queue
+ * */
 void simulator_advance()
 {
 	struct ll_node *curr = all_events.head;
@@ -156,7 +163,10 @@ void simulator_advance()
 	free(curr);
 }
 
-double simulator_get_last_time(EVENT_TYPE_T event_id){
+/*
+ * Get time of last event occurrence
+ * */
+double simulator_get_last_time(EVENT_TYPE_T event_id){ // why need event_id?
 	struct ll_node *this = event_lists[event_id].tail;
 	if (this) {
 		return this->time;
@@ -164,8 +174,16 @@ double simulator_get_last_time(EVENT_TYPE_T event_id){
 	return -1.0;
 }
 
-// Simulator descriptions
-EVENT_TYPE_T simulator_get_next_event(){return first_event;}
+/*
+ * Simulator descriptions
+ * */
+EVENT_TYPE_T simulator_get_next_event(){
+    return first_event;
+}
+
+/*
+ * Get time of current event occurrence
+ * */
 double simulator_get_time(){
 	struct ll_node *this = all_events.head;
 	if (this) {

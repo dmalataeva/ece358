@@ -28,14 +28,25 @@ void packet_arrival_handler() {
 	simulator_insert_event(
 		packet_arrival_event,
 		current_time + exp_random_variable(simulator_options.lambda));
-	simulator_insert_event(
-		packet_departure_event,
-		departure_time);
+
+#ifdef FINITE_BUFFER
+	if (system_stats.packets_in - (system_stats.packets_out + system_stats.packets_dropped) > simulator_options.buffer_size) {
+		simulator_insert_event(
+				packet_drop_event,
+				current_time);
+	} else {
+#endif
+		simulator_insert_event(
+				packet_departure_event,
+				departure_time);
+#ifdef FINITE_BUFFER
+	}
+#endif
 
 }
 void packet_drop_handler() {
 	// printf("Drop@%f\n",simulator_get_time());
-
+	system_stats.packets_dropped += 1;
 }
 void packet_departure_handler() {
 	// printf("Departure@%f\n",simulator_get_time());
@@ -51,7 +62,7 @@ void system_observer_handler() {
 	if (system_stats.packets_in == system_stats.packets_out) {
 		system_stats.idle_count += 1;
 	} else {
-		system_stats.packet_count += system_stats.packets_in - system_stats.packets_out;
+		system_stats.packet_count += system_stats.packets_in - (system_stats.packets_out + system_stats.packets_dropped);
 	}
 
 	// Insert next observer event
