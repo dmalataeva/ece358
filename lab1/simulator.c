@@ -10,15 +10,14 @@ struct ll_node {
 	struct ll_node *next;
 	struct ll_node *type_next;
 	EVENT_TYPE_T event;
-	double time; // time of arrival?
+	double time;
 };
 
 struct linked_list {
 	struct ll_node *head, *tail;
 };
 
-static struct linked_list all_events = {0,0}; // why initialized as {0,0}?
-// static struct linked_list insertion_order = {0,0};
+static struct linked_list all_events = {0,0};
 
 #define _DEF_LISTS(e,h) {0,0},
 static struct linked_list event_lists[] = {
@@ -41,7 +40,7 @@ void simulator_init(
 	simulator_options.C = C;
 	simulator_options.rho = rho;
 	simulator_options.lambda = (rho * C)/L;
-	simulator_options.alpha = simulator_options.lambda * 5; // should we make this configurable?
+	simulator_options.alpha = simulator_options.lambda * 5;
 #ifdef FINITE_BUFFER
 	simulator_options.buffer_size = b_size;
 #endif
@@ -69,7 +68,6 @@ void simulator_clear_queue() {
 
 void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 {
-	// printf("Inserting event %d at time %f\n",event_id,time);
 	struct ll_node *curr = event_lists[event_id].head;
 
 	struct ll_node *in_node = malloc(sizeof(struct ll_node));
@@ -81,16 +79,16 @@ void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 		curr = curr->type_next;
 	}
 	if (!curr) {
+
 		// First event of its type
-		// printf("Only event of type %d in list.\n",event_id);
 		event_lists[event_id].head = in_node;
 		event_lists[event_id].tail = in_node;
 		in_node->type_next = 0;
 		curr = all_events.head;
 	} else {
 		if (curr == event_lists[event_id].head && curr->time > time) {
+
 			// Insert at head
-			// printf("Earliest event of type %d in list.\n",event_id);
 			in_node->type_next = curr;
 			event_lists[event_id].head = in_node;
 			curr = all_events.head;
@@ -107,15 +105,15 @@ void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 		curr = curr->next;
 	}
 	if (!curr) {
+
 		// First event in list
-		// printf("Only event in list.\n");
 		all_events.head = in_node;
 		all_events.tail = in_node;
 		in_node->next = 0;
 		curr = all_events.head;
 	} else {
 		if (curr == all_events.head && curr->time > time) {
-			// printf("Earliest event in list.\n");
+
 			// Insert at head
 			in_node->next = curr;
 			all_events.head = in_node;
@@ -166,7 +164,7 @@ void simulator_advance()
 /*
  * Get time of last event occurrence
  * */
-double simulator_get_last_time(EVENT_TYPE_T event_id){ // why need event_id?
+double simulator_get_last_time(EVENT_TYPE_T event_id){
 	struct ll_node *this = event_lists[event_id].tail;
 	if (this) {
 		return this->time;

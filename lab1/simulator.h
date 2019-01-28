@@ -20,7 +20,7 @@ typedef struct SIM_PROPS_S {
 	double L;
 
 	/*
-	 * average number of observer events [bits/s]
+	 * average number of observer events
 	 * */
 	double alpha;
 
@@ -52,32 +52,32 @@ extern SIM_PROPS_T simulator_options;
 typedef struct SYS_STATS_S {
 
 	/*
-	 * Na – number of arrivals
+	 * number of arrivals
 	 * */
 	unsigned long int packets_in;
 
 	/*
-	 * Nd – number of departures
+	 * number of departures
 	 * */
 	unsigned long int packets_out;
 
 	/*
-	 * number of packets dropped, used in calculating Ploss?
+	 * number of packets dropped, used in calculating probability of loss
 	 * */
 	unsigned long int packets_dropped;
 
 	/*
-	 * No – number of observations
+	 * number of observations
 	 * */
 	unsigned long int observations;
 
 	/*
-	 * idle time counter, used to calculate proportion of idle time, Pidle?
+	 * idle observer counter, used to calculate proportion of idle time
 	 * */
 	unsigned long int idle_count;
 
 	/*
-	 * total packet count?
+	 * total packet count
 	 * */
 	unsigned long int packet_count;
 

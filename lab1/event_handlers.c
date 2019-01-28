@@ -9,14 +9,17 @@ EVENT_LOOKUP_T event_lookup[] = {
 };
 
 void packet_arrival_handler() {
+
+	// Generate ERV packet size
 	double packet_size = exp_random_variable(1.0/simulator_options.L);
 	double departure_time, current_time;
-	// printf("Arrival@%f\n",simulator_get_time());
 
 	// Update statistics
 	system_stats.packets_in += 1;
 
 	// Get departure time from queue
+	// If queue is not empty, departure time is last departure event + transmission time
+	// If queue is empty, departure time is last arrival (current time) + transmission time
 	current_time = simulator_get_time();
 	departure_time = simulator_get_last_time(packet_departure_event);
 	if (departure_time < 0) {
@@ -24,11 +27,12 @@ void packet_arrival_handler() {
 	}
 	departure_time += packet_size/simulator_options.C;
 
-	// Insert events into queue
+	// Insert arrival event + time into queue
 	simulator_insert_event(
 		packet_arrival_event,
 		current_time + exp_random_variable(simulator_options.lambda));
 
+	// Add drop event or departure event depending on if buffer is full
 #ifdef FINITE_BUFFER
 	if (system_stats.packets_in - (system_stats.packets_out + system_stats.packets_dropped) > simulator_options.buffer_size) {
 		simulator_insert_event(
@@ -44,21 +48,28 @@ void packet_arrival_handler() {
 #endif
 
 }
+
+
 void packet_drop_handler() {
-	// printf("Drop@%f\n",simulator_get_time());
+
+	// Update statistics
 	system_stats.packets_dropped += 1;
 }
-void packet_departure_handler() {
-	// printf("Departure@%f\n",simulator_get_time());
 
-	// Update statisctics
+
+void packet_departure_handler() {
+
+	// Update statistics
 	system_stats.packets_out += 1;
 }
+
+
 void system_observer_handler() {
-	// printf("Observer@%f\n",simulator_get_time());
 
 	// Update statistics
 	system_stats.observations += 1;
+
+	// Update idle count or packet count depending on packets present in the queue
 	if (system_stats.packets_in == system_stats.packets_out) {
 		system_stats.idle_count += 1;
 	} else {

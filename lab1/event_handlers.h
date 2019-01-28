@@ -1,7 +1,11 @@
 #ifndef _LAB1_EVENT_HANDLERS_H_
 #define _LAB1_EVENT_HANDLERS_H_
 
-/* Event definitions for Discrete Event Simulations */
+/*
+ * Event definitions for Discrete Event Simulations
+ *
+ * An abstracted implementation to look up events and their respective handlers
+ * */
 
 #define EVENT_DEFINITIONS(_p) \
 	_p(packet_arrival_event, packet_arrival_handler) \

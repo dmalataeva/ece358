@@ -23,7 +23,6 @@ int main(int argc, char *argv[]) {
 	int i = 1;
 	float rho;
 
-	// Parameter parsing
 	if (argc < 2) {
 		usage(argv[0]);
 		return 1;
@@ -70,7 +69,7 @@ int main(int argc, char *argv[]) {
 		srand(time(0));
 
 		double t = exp_random_variable(simulator_options.lambda);
-		// printf("Inserting incoming_packet_event at %lf\n",t);
+
 		simulator_insert_event(packet_arrival_event, t);
 		t = exp_random_variable(simulator_options.alpha);
 		simulator_insert_event(system_observer_event, t);
