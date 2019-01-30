@@ -14,15 +14,15 @@ struct ll_node {
 };
 
 struct linked_list {
-	struct ll_node *head, *tail;
+	struct ll_node *head, *cursor, *tail;
 };
 
-static struct linked_list all_events = {0,0};
+static struct linked_list all_events = {0,0,0};
 
-#define _DEF_LISTS(e,h) {0,0},
+#define _DEF_LISTS(e,h) {0,0,0},
 static struct linked_list event_lists[] = {
 	EVENT_DEFINITIONS(_DEF_LISTS)
-	{0,0}
+	{0,0,0}
 };
 
 SIM_PROPS_T simulator_options = {0};
@@ -56,23 +56,32 @@ void simulator_init(
 void simulator_clear_queue() {
 	int i = first_event;
 	while (++i != last_event)
-		event_lists[i].head = event_lists[i].tail = 0;
+		event_lists[i].head = event_lists[i].cursor = event_lists[i].tail = 0;
 	struct ll_node *curr = all_events.head;
 	while (curr) {
 		struct ll_node *next = curr->next;
 		free(curr);
 		curr = next;
 	}
-	all_events.head = all_events.tail = 0;
+	all_events.head = all_events.cursor = all_events.tail = 0;
 }
 
 void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 {
-	struct ll_node *curr = event_lists[event_id].head;
+	struct ll_node *curr;
 
 	struct ll_node *in_node = malloc(sizeof(struct ll_node));
 	in_node->event = event_id;
 	in_node->time = time;
+
+	if (event_lists[event_id].tail && time > event_lists[event_id].tail->time){
+		curr = event_lists[event_id].tail;
+	} else if (event_lists[event_id].cursor && time > event_lists[event_id].cursor->time) {
+		curr = event_lists[event_id].cursor;
+	} else {
+		curr = event_lists[event_id].head;
+	}
+		// curr = event_lists[event_id].head;
 
 	// Insert into typed list
 	while (curr && curr->type_next && curr->type_next->time <= time) {
@@ -98,6 +107,16 @@ void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 			if (curr == event_lists[event_id].tail)
 				event_lists[event_id].tail = in_node;
 		}
+	}
+	event_lists[event_id].cursor = in_node;
+
+
+	if (all_events.tail && time >= all_events.tail->time){
+		curr = all_events.tail;
+	} else if (all_events.cursor && time > all_events.cursor->time && all_events.cursor->time > curr->time) {
+		curr = all_events.cursor;
+	} else {
+		curr = all_events.head;
 	}
 
 	// Insert into generic list
@@ -125,6 +144,7 @@ void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 				all_events.tail = in_node;
 		}
 	}
+	all_events.cursor = in_node;
 
 }
 
@@ -153,9 +173,13 @@ void simulator_advance()
 	EVENT_TYPE_T e = curr->event;
 	event_lookup[e].handler();
 	all_events.head = curr->next;
+	if (curr == all_events.cursor)
+		all_events.cursor = curr->next;
 	if (!curr->next)
 		all_events.tail = 0;
 	event_lists[curr->event].head = curr->type_next;
+	if (curr == event_lists[curr->event].cursor)
+		event_lists[curr->event].cursor = curr->type_next;
 	if (!curr->type_next)
 		event_lists[curr->event].tail = 0;
 	free(curr);
