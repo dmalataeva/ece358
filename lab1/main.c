@@ -12,11 +12,16 @@
 #define SIM_T 1000
 
 void usage(char *cmd) {
-	printf("Usage: %s [-T max_seconds] rho [rho2 ...]\n",cmd);
+	printf("Usage: %s [-T max_seconds] [-C transmit_speed] [-L avg_packet_size]",cmd);
+	#ifdef FINITE_BUFFER
+	printf(" [-K buffer_size]");
+	#endif
+	printf(" rho [rho2 ...]\n");
 }
 
 int main(int argc, char *argv[]) {
 	float max_time = SIM_T;
+	float tx_speed = SIM_C, p_size_avg = SIM_L;
 #ifdef FINITE_BUFFER
 	int buf_size = 10;
 #endif
@@ -31,14 +36,18 @@ int main(int argc, char *argv[]) {
 		char *arg = argv[i];
 		if (arg[0] == '-') {
 			switch(arg[1]){
+				case 'C': 
+					tx_speed = atof(argv[++i]);
+					break;
+				case 'L': 
+					p_size_avg = atof(argv[++i]);
+					break;
 				case 'T': 
-					i = i + 1;
-					max_time = atof(argv[i]);
+					max_time = atof(argv[++i]);
 					break;
 #ifdef FINITE_BUFFER
 				case 'K':
-					i = i + 1;
-					buf_size = atoi(argv[i]);
+					buf_size = atoi(argv[++i]);
 					break;
 #endif
 				default:
@@ -63,8 +72,8 @@ int main(int argc, char *argv[]) {
 #ifdef FINITE_BUFFER
 			buf_size,
 #endif
-			SIM_L,
-			SIM_C,
+			p_size_avg,
+			tx_speed,
 			rho);
 		srand(time(0));
 
