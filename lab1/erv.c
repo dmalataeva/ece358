@@ -4,7 +4,7 @@
 #include <math.h>
 
 double uniform_random_variable() {
-    return rand()/((float)RAND_MAX + 1);
+    return rand()/((double)RAND_MAX + 1);
 }
 
 double exp_random_variable(double lambda) {
