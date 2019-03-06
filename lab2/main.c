@@ -7,26 +7,29 @@
 #include <string.h>
 #include <time.h>
 
-#define SIM_C 1000000
-#define SIM_L 2000
+#define SIM_R 1000000
+#define SIM_S 200000000
+#define SIM_D 10
+#define SIM_L 1500
+#define SIM_A 10
 #define SIM_T 1000
 
 void usage(char *cmd) {
-	printf("Usage: %s [-T max_seconds] [-C transmit_speed] [-L avg_packet_size]",cmd);
+	printf("Usage: %s [-T max_seconds] [-R transmission_rate] [-S propagation_speed] [-D node_distance] [-L packet_length] [-A packet_arrival_rate]",cmd);
 	#ifdef FINITE_BUFFER
 	printf(" [-K buffer_size]");
 	#endif
-	printf(" rho [rho2 ...]\n");
+	printf("N [N2 ...]\n");
 }
 
 int main(int argc, char *argv[]) {
-	float max_time = SIM_T;
-	float tx_speed = SIM_C, p_size_avg = SIM_L;
+	float Tmax = SIM_T;
+	float R = SIM_R, S = SIM_S, D = SIM_D, L = SIM_L, A = SIM_A;
 #ifdef FINITE_BUFFER
 	int buf_size = 10;
 #endif
-	int i = 1;
-	float rho;
+	int i = 1, t = 0;
+	int N;
 
 	if (argc < 2) {
 		usage(argv[0]);
@@ -36,14 +39,23 @@ int main(int argc, char *argv[]) {
 		char *arg = argv[i];
 		if (arg[0] == '-') {
 			switch(arg[1]){
-				case 'C': 
-					tx_speed = atof(argv[++i]);
+				case 'T':
+					Tmax = atof(argv[++i]);
 					break;
-				case 'L': 
-					p_size_avg = atof(argv[++i]);
+				case 'R':
+					R = atof(argv[++i]);
 					break;
-				case 'T': 
-					max_time = atof(argv[++i]);
+				case 'S':
+					S = atof(argv[++i]);
+					break;
+				case 'D':
+					D = atof(argv[++i]);
+					break;
+				case 'L':
+					L = atof(argv[++i]);
+					break;
+				case 'A':
+					A = atof(argv[++i]);
 					break;
 #ifdef FINITE_BUFFER
 				case 'K':
@@ -61,45 +73,35 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	printf("rho,P_IDLE,E[N]");
+	printf("N,efficiency,throughput");
 #ifdef FINITE_BUFFER
 	printf(",P_LOSS");
 #endif
 	printf("\n");
-	while (i < argc && (rho = atof(argv[i]))) {
+	while (i < argc && (N = atof(argv[i]))) {
 
-		simulator_init(
-#ifdef FINITE_BUFFER
-			buf_size,
-#endif
-			p_size_avg,
-			tx_speed,
-			rho);
-		srand(time(0));
+	    simulator_init(N,A,L,R,S,D);
+        srand(time(0));
 
-		double t = exp_random_variable(simulator_options.lambda);
+	    for (t=0; t<N; t++) {
+            double arrival_time = exp_random_variable(simulator_options.A);
+            simulator_insert_event(t, packet_arrival_event, arrival_time);
+	    }
 
-		simulator_insert_event(packet_arrival_event, t);
-		t = exp_random_variable(simulator_options.alpha);
-		simulator_insert_event(system_observer_event, t);
+        do {
+            simulator_advance();
+        } while (simulator_get_time() < Tmax);
 
-		do {
-			simulator_advance();
-		} while (simulator_get_time() < max_time);
+	    simulator_clear_queue();
 
-		simulator_clear_queue();
+        printf("%d,%lf,%lf",
+               N,
+               (double)system_stats.packets_transmitted/system_stats.packet_count,
+               (double)(system_stats.packets_transmitted*simulator_options.L)/Tmax
+        );
 
-		printf("%f,%lf,%lf",
-			rho,
-			(double)system_stats.idle_count/system_stats.observations,
-			(double)system_stats.packet_count/system_stats.observations
-			);
-#ifdef FINITE_BUFFER
-		printf(",%lf",
-			(double)system_stats.packets_dropped/system_stats.packets_in);
-#endif
-		printf("\n");
-		i = i + 1;
+        printf("\n");
+        i = i + 1;
 	}
 
 	return 0;

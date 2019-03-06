@@ -9,9 +9,7 @@
 
 #define EVENT_DEFINITIONS(_p) \
 	_p(packet_arrival_event, packet_arrival_handler) \
-	_p(packet_drop_event, packet_drop_handler) \
-	_p(packet_departure_event, packet_departure_handler) \
-	_p(system_observer_event, system_observer_handler)
+	_p(exp_backoff_event, exp_backoff_handler)
 
 // Define global names for the events
 #define _DEF_EVENTS(e,h) e,

@@ -10,8 +10,9 @@ EVENT_LOOKUP_T event_lookup[] = {
 
 void packet_arrival_handler() {
 
+	double current_time;
 	// Generate ERV packet size
-	double packet_size = exp_random_variable(1.0/simulator_options.L);
+	/*double packet_size = exp_random_variable(1.0/simulator_options.L);
 	double departure_time, current_time;
 
 	// Update statistics
@@ -25,60 +26,48 @@ void packet_arrival_handler() {
 	if (departure_time < 0) {
 		departure_time = current_time;
 	}
-	departure_time += packet_size/simulator_options.C;
+	departure_time += packet_size/simulator_options.C;*/
 
 	// Insert arrival event + time into queue
-	simulator_insert_event(
+	simulator_insert_event(0, // 0 for now, change to variable when we figure out how to get node context
 		packet_arrival_event,
-		current_time + exp_random_variable(simulator_options.lambda));
-
-	// Add drop event or departure event depending on if buffer is full
-#ifdef FINITE_BUFFER
-	if (system_stats.packets_in - (system_stats.packets_out + system_stats.packets_dropped) > simulator_options.buffer_size) {
-		simulator_insert_event(
-				packet_drop_event,
-				current_time);
-	} else {
-#endif
-		simulator_insert_event(
-				packet_departure_event,
-				departure_time);
-#ifdef FINITE_BUFFER
-	}
-#endif
-
+		current_time + exp_random_variable(simulator_options.A));
 }
 
 
 void packet_drop_handler() {
 
 	// Update statistics
-	system_stats.packets_dropped += 1;
+	//system_stats.packets_dropped += 1;
 }
 
 
 void packet_departure_handler() {
 
 	// Update statistics
-	system_stats.packets_out += 1;
+	//system_stats.packets_out += 1;
 }
 
 
-void system_observer_handler() {
+void system_observer_handler() { // TODO: change packet_count (total # of packets) logic because it relies on deleted stats
 
 	// Update statistics
-	system_stats.observations += 1;
+	//system_stats.observations += 1;
 
 	// Update idle count or packet count depending on packets present in the queue
-	if (system_stats.packets_in == system_stats.packets_out) {
+	/*if (system_stats.packets_in == system_stats.packets_out) {
 		system_stats.idle_count += 1;
 	} else {
 		system_stats.packet_count += system_stats.packets_in - (system_stats.packets_out + system_stats.packets_dropped);
-	}
+	}*/
 
 	// Insert next observer event
-	simulator_insert_event(
+	/*simulator_insert_event(
 		system_observer_event,
-		simulator_get_time() + exp_random_variable(simulator_options.alpha));
+		simulator_get_time() + exp_random_variable(simulator_options.alpha));*/
+}
+
+void exp_backoff_handler() {
+
 }
 

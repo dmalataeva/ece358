@@ -25,32 +25,37 @@ static struct linked_list event_lists[] = {
 	{0,0,0}
 };
 
+static struct linked_list *node_events; // pointer to array of LLs, one for each node
+
 SIM_PROPS_T simulator_options = {0};
 SYS_STATS_T system_stats = {0};
 
 void simulator_init(
-#ifdef FINITE_BUFFER
-	int b_size,
-#endif
+	int N,
+	float A,
 	float L,
-	float C,
-	float rho
+	float R,
+	float S,
+	int D
 ){
-	simulator_options.L = L;
-	simulator_options.C = C;
-	simulator_options.rho = rho;
-	simulator_options.lambda = (rho * C)/L;
-	simulator_options.alpha = simulator_options.lambda * 5;
-#ifdef FINITE_BUFFER
-	simulator_options.buffer_size = b_size;
-#endif
+	int node_array[N] = {0};
+	struct linked_list node_e[N] = {{0,0,0}};
 
-	system_stats.packets_in = 0;
-	system_stats.packets_out = 0;
-	system_stats.packets_dropped = 0;
-	system_stats.observations = 0;
-	system_stats.idle_count = 0;
+	simulator_options.N = N;
+	simulator_options.A = A;
+	simulator_options.L = L;
+	simulator_options.R = R;
+	simulator_options.S = S;
+	simulator_options.D = D;
+	simulator_options.tProp = D/S;
+	simulator_options.tTrans = L/R;
+
+	system_stats.packets_transmitted = 0;
 	system_stats.packet_count = 0;
+	system_stats.collision_count = node_array; // array of counters for all nodes
+	//memcpy(a, (int[]){1,2,3,4,5}, initlen*sizeof(int));
+
+	node_events = node_e; // hopefully this works haha iwkms
 }
 
 void simulator_clear_queue() {
@@ -66,14 +71,16 @@ void simulator_clear_queue() {
 	all_events.head = all_events.cursor = all_events.tail = 0;
 }
 
-void simulator_insert_event(EVENT_TYPE_T event_id, double time)
+void simulator_insert_event(int t, EVENT_TYPE_T event_id, double time)
 {
 	struct ll_node *curr;
 
+	// initialize the node to be inserted
 	struct ll_node *in_node = malloc(sizeof(struct ll_node));
 	in_node->event = event_id;
 	in_node->time = time;
 
+	// insert into event type list
 	if (event_lists[event_id].tail && time > event_lists[event_id].tail->time){
 		curr = event_lists[event_id].tail;
 	} else if (event_lists[event_id].cursor && time > event_lists[event_id].cursor->time) {
@@ -81,7 +88,6 @@ void simulator_insert_event(EVENT_TYPE_T event_id, double time)
 	} else {
 		curr = event_lists[event_id].head;
 	}
-		// curr = event_lists[event_id].head;
 
 	// Insert into typed list
 	while (curr && curr->type_next && curr->type_next->time <= time) {
