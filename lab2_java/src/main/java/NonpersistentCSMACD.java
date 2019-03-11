@@ -28,15 +28,12 @@ public class NonpersistentCSMACD {
             Simulator simulator = new Simulator(i_N, A_arg, L_arg, R_arg, S_arg, D_arg, Simulator.NONPERSISTENT);
 
             for (int i=0; i<i_N; i++) {
-                simulator.insertEvent(Event.ArrivalType, i, RandomGenerator.exp_random_variable(simulator.A));
+                simulator.insertEvent(Event.ArrivalType, i, 0, RandomGenerator.exp_random_variable(simulator.A));
             }
 
             do {
                 simulator.advance();
             } while (simulator.get_current_time() < T_arg);
-
-            //System.out.println("packets transmitted: " + simulator.successful_attempt_count + "\npacket total: " + simulator.attempt_count
-            //        + "\npackets dropped: " + simulator.packets_dropped);
 
             System.out.println(i_N + ",   " + (double)simulator.successful_attempt_count/simulator.attempt_count
                     + ",  " + (double)simulator.successful_attempt_count*simulator.L/(T_arg*1000000));

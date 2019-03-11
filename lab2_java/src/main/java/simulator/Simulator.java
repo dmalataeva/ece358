@@ -135,19 +135,20 @@ public class Simulator {
     }
 
     // TODO: refactor how type of event is infered!
-    public void insertEvent(String eventType, int nodeId, double time, List<Delay>... affectedNodes) {
+    public void insertEvent(String eventType, int nodeId, double processingTime, double arrivalTime, List<Delay>... affectedNodes) {
         Event newEvent = null;
 
         switch (eventType) {
             case Event.ArrivalType:
-                newEvent = new Arrival(time, nodeId);
+                newEvent = new Arrival(processingTime, arrivalTime, nodeId);
                 break;
             case Event.CollisionType:
-                if (affectedNodes.length < 1 || affectedNodes[0] == null) {
+                if (affectedNodes == null || affectedNodes[0] == null) {
                     System.out.println("Did not provide full list of affected nodes for collision!");
+                    break;
                 }
 
-                newEvent = new Collision(nodeId, time, affectedNodes[0]);
+                newEvent = new Collision(nodeId, processingTime, affectedNodes[0]);
                 break;
         }
 
@@ -169,7 +170,6 @@ public class Simulator {
             case Event.ArrivalType:
 
                 // Increment here to avoid counting packets with time > T_max
-                //packet_count++;
                 handleArrival((Arrival)e);
                 break;
             case Event.CollisionType:
@@ -185,6 +185,17 @@ public class Simulator {
         return current != null ? current.time : -1;
     }
 
+    public double get_last_time() {
+        if (all_events.size() == 0) return -1;
+
+        Double lastTime = all_events.peek().time;
+        for (Event e:all_events) {
+            if (e.time > lastTime) lastTime = e.time;
+        }
+
+        return lastTime;
+    }
+
     private void handleArrival(Arrival a) {
         boolean collisionsWithCurrentNode = processCollisions(a);
 
@@ -192,22 +203,19 @@ public class Simulator {
             attempt_count++;
             successful_attempt_count++;
 
-            insertEvent(Event.ArrivalType, a.nodeId, a.time + RandomGenerator.exp_random_variable(A));
+            insertEvent(Event.ArrivalType, a.nodeId, a.time+transmission_delay, a.arrivalTime + RandomGenerator.exp_random_variable(A));
 
             // change to poll() once confirm working state
             all_events.remove(a);
             collision_count[a.nodeId] = 0;
-            bus_busy_count[a.nodeId] = 0;
+            if (mode.equals(NONPERSISTENT)) bus_busy_count[a.nodeId] = 0;
         }
     }
 
     private void handleCollision(Collision c) {
-
-        /*if (c.affectedNodes.size() > 2) {
-            System.out.println("Detected multicollision");
-        }*/
-
         for (Delay d:c.affectedNodes) {
+            attempt_count++;
+
             if (d.reason.equals(Delay.COLLISION)) {
 
                 // Increment attempt for all nodes that experience transmission collision
@@ -251,12 +259,15 @@ public class Simulator {
 
     private void dropPacket(int nodeId) {
         packets_dropped++;
+        attempt_count--;
         collision_count[nodeId] = 0;
-        bus_busy_count[nodeId] = 0;
+        if (mode.equals(NONPERSISTENT)) bus_busy_count[nodeId] = 0;
 
         all_events.remove(node_events[nodeId]);
 
-        insertEvent(Event.ArrivalType, nodeId, node_events[nodeId].time + RandomGenerator.exp_random_variable(A));
+        Arrival a = (Arrival)node_events[nodeId];
+
+        insertEvent(Event.ArrivalType, nodeId, a.time, a.arrivalTime + RandomGenerator.exp_random_variable(A));
     }
 
     // return false for no collisions, true for collisions
@@ -271,7 +282,7 @@ public class Simulator {
 
             if (node_events[i].time < Math.abs(e.nodeId-i)*propagation_delay + e.time) {
                 collisionsWithCurrentNode = true;
-                attempt_count++;
+                //attempt_count++;
                 collision_count[i]++;
 
                 affectedNodes.add(
@@ -282,6 +293,7 @@ public class Simulator {
 
             } else if (node_events[i].time > Math.abs(e.nodeId-i)*propagation_delay + e.time
                     && node_events[i].time < Math.abs(e.nodeId-i)*propagation_delay + e.time + transmission_delay) {
+                //attempt_count++;
                 if (mode.equals(PERSISTENT)) {
                     affectedNodes.add(
                         new Delay(
@@ -306,7 +318,7 @@ public class Simulator {
         // Transmitting node is affected too
         if (collisionsWithCurrentNode) {
             collision_count[e.nodeId]++;
-            attempt_count++;
+            //attempt_count++;
 
             affectedNodes.add(
                     new Delay(
@@ -317,7 +329,7 @@ public class Simulator {
 
         // Insert collision event if time comparison yielded results
         if (affectedNodes.size() > 0) {
-            insertEvent(Event.CollisionType, e.nodeId, get_current_time(), affectedNodes);
+            insertEvent(Event.CollisionType, e.nodeId, get_current_time(), get_current_time(), affectedNodes);
         }
 
         return collisionsWithCurrentNode;
