@@ -22,6 +22,8 @@ public class NonpersistentCSMACD {
     public static void main(String[] args) {
         parse_args(args);
 
+        System.out.println("N       Efficiency      Throughput");
+
         for (int i_N=N_arg_start; i_N<=N_arg_end; i_N+=N_step) {
             Simulator simulator = new Simulator(i_N, A_arg, L_arg, R_arg, S_arg, D_arg, Simulator.NONPERSISTENT);
 
@@ -33,14 +35,11 @@ public class NonpersistentCSMACD {
                 simulator.advance();
             } while (simulator.get_current_time() < T_arg);
 
-            System.out.println("packets transmitted: " + simulator.successful_attempt_count + "\npacket total: " + simulator.attempt_count
-                    + "\npackets dropped: " + simulator.packets_dropped);
+            //System.out.println("packets transmitted: " + simulator.successful_attempt_count + "\npacket total: " + simulator.attempt_count
+            //        + "\npackets dropped: " + simulator.packets_dropped);
 
-            //(double)system_stats.packets_transmitted/system_stats.packet_count,
-            //(double)(system_stats.packets_transmitted*simulator_options.L)/Tmax
-
-            System.out.println("Efficiency: " + (double)simulator.successful_attempt_count/simulator.attempt_count);
-            System.out.println("Throughput: " + (double)simulator.successful_attempt_count*simulator.L/T_arg);
+            System.out.println(i_N + ",   " + (double)simulator.successful_attempt_count/simulator.attempt_count
+                    + ",  " + (double)simulator.successful_attempt_count*simulator.L/(T_arg*1000000));
         }
     }
 

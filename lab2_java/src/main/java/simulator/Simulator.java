@@ -192,13 +192,12 @@ public class Simulator {
             attempt_count++;
             successful_attempt_count++;
 
-            collision_count[a.nodeId] = 0;
-            if (mode.equals(NONPERSISTENT)) bus_busy_count[a.nodeId] = 0;
-
             insertEvent(Event.ArrivalType, a.nodeId, a.time + RandomGenerator.exp_random_variable(A));
 
             // change to poll() once confirm working state
             all_events.remove(a);
+            collision_count[a.nodeId] = 0;
+            bus_busy_count[a.nodeId] = 0;
         }
     }
 
@@ -214,9 +213,7 @@ public class Simulator {
                 // Increment attempt for all nodes that experience transmission collision
                 if (collision_count[d.id] > 10) {
                     dropPacket(d.id);
-                    collision_count[d.id] = 0;
                 } else {
-                    attempt_count++;
                     changeEventTime(d.id, d.timeDelay);
                 }
 
@@ -227,7 +224,6 @@ public class Simulator {
                 } else if (mode.equals(NONPERSISTENT)) {
                     if (bus_busy_count[d.id] > 10) {
                         dropPacket(d.id);
-                        bus_busy_count[d.id] = 0;
                     } else {
                         changeEventTime(d.id, d.timeDelay);
                     }
@@ -255,6 +251,9 @@ public class Simulator {
 
     private void dropPacket(int nodeId) {
         packets_dropped++;
+        collision_count[nodeId] = 0;
+        bus_busy_count[nodeId] = 0;
+
         all_events.remove(node_events[nodeId]);
 
         insertEvent(Event.ArrivalType, nodeId, node_events[nodeId].time + RandomGenerator.exp_random_variable(A));
@@ -272,6 +271,7 @@ public class Simulator {
 
             if (node_events[i].time < Math.abs(e.nodeId-i)*propagation_delay + e.time) {
                 collisionsWithCurrentNode = true;
+                attempt_count++;
                 collision_count[i]++;
 
                 affectedNodes.add(
@@ -306,6 +306,7 @@ public class Simulator {
         // Transmitting node is affected too
         if (collisionsWithCurrentNode) {
             collision_count[e.nodeId]++;
+            attempt_count++;
 
             affectedNodes.add(
                     new Delay(
