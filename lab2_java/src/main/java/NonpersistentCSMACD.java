@@ -1,6 +1,5 @@
 package main.java;
 
-import main.java.event.Event;
 import main.java.simulator.Simulator;
 import main.java.util.RandomGenerator;
 
@@ -28,7 +27,7 @@ public class NonpersistentCSMACD {
             Simulator simulator = new Simulator(i_N, A_arg, L_arg, R_arg, S_arg, D_arg, Simulator.NONPERSISTENT);
 
             for (int i=0; i<i_N; i++) {
-                simulator.insertEvent(Event.ArrivalType, i, 0, RandomGenerator.exp_random_variable(simulator.A));
+                simulator.insertEvent(i, 0, RandomGenerator.exp_random_variable(simulator.A));
             }
 
             do {

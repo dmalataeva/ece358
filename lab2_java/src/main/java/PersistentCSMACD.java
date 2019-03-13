@@ -1,16 +1,19 @@
 package main.java;
 
-import main.java.event.Event;
 import main.java.simulator.Simulator;
 import main.java.util.RandomGenerator;
 
 public class PersistentCSMACD {
+
+    // Default values
     public static double T_arg = 1000;
     public static double R_arg = 1000000;
     public static double S_arg = 200000000;
     public static double D_arg = 10;
     public static int L_arg = 1500;
     public static double A_arg = 10;
+
+    // Starting N, ending N, step size
     public static int N_arg_start = 10;
     public static int N_arg_end = 10;
     public static int N_step = 1;
@@ -24,7 +27,7 @@ public class PersistentCSMACD {
             Simulator simulator = new Simulator(i_N, A_arg, L_arg, R_arg, S_arg, D_arg, Simulator.PERSISTENT);
 
             for (int i=0; i<i_N; i++) {
-                simulator.insertEvent(Event.ArrivalType, i, 0, RandomGenerator.exp_random_variable(simulator.A));
+                simulator.insertEvent(i, 0, RandomGenerator.exp_random_variable(simulator.A));
             }
 
             do {
@@ -37,8 +40,6 @@ public class PersistentCSMACD {
     }
 
     private static void parse_args(String[] args) {
-
-        // TODO: rewrite logic for param parsing to allow defaulting
         for (int i=1; i<args.length; i+=2) {
             switch (args[i-1]) {
                 case "-T":
