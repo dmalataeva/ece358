@@ -10,6 +10,7 @@ public class Delay {
 
     public static String BUSBUSY = "BUSBUSY";
     public static String COLLISION = "COLLISION";
+    public static String COLLISIONWAIT = "COLLISIONWAIT";
 
     /*
      * Used to identify node on the network bus

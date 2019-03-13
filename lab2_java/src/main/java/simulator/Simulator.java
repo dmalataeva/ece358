@@ -214,10 +214,9 @@ public class Simulator {
 
     private void handleCollision(Collision c) {
         for (Delay d:c.affectedNodes) {
-            attempt_count++;
 
             if (d.reason.equals(Delay.COLLISION)) {
-
+                attempt_count++;
                 // Increment attempt for all nodes that experience transmission collision
                 if (collision_count[d.id] > 10) {
                     dropPacket(d.id);
@@ -237,7 +236,12 @@ public class Simulator {
                     }
                 }
             }
+        }
 
+        for (Delay d:c.affectedNodes) {
+            if (d.reason.equals(Delay.COLLISIONWAIT)) {
+                changeEventTime(d.id, d.timeDelay);
+            }
         }
 
         all_events.remove(c);
@@ -248,6 +252,9 @@ public class Simulator {
 
         if (!all_events.contains(target)) {
             System.out.println("Event queue does not contain the target event!");
+            return;
+        } else if (target.time > time) {
+            // We don't want to change time to an earlier timestamp
             return;
         }
 
@@ -267,13 +274,14 @@ public class Simulator {
 
         Arrival a = (Arrival)node_events[nodeId];
 
-        insertEvent(Event.ArrivalType, nodeId, a.time, a.arrivalTime + RandomGenerator.exp_random_variable(A));
+        insertEvent(Event.ArrivalType, nodeId, a.arrivalTime, a.arrivalTime + RandomGenerator.exp_random_variable(A));
     }
 
     // return false for no collisions, true for collisions
     private boolean processCollisions(Event e) {
         List<Delay> affectedNodes = new ArrayList<>();
         boolean collisionsWithCurrentNode = false;
+        double discoveryDelay = transmission_delay;
 
         for (int i=0;i<node_events.length; i++) {
             if (node_events[i].equals(e) || node_events[i] == null) {
@@ -285,11 +293,14 @@ public class Simulator {
                 //attempt_count++;
                 collision_count[i]++;
 
+                discoveryDelay = Math.min(Math.abs(e.nodeId-i)*propagation_delay, discoveryDelay);
+
+
                 affectedNodes.add(
                         new Delay(
                                 i,
                                 Delay.COLLISION,
-                                node_events[i].time + RandomGenerator.exp_backoff_period(collision_count[i], 1/R)));
+                                e.time + Math.abs(e.nodeId-i)*propagation_delay + RandomGenerator.exp_backoff_period(collision_count[i], 1/R)));
 
             } else if (node_events[i].time > Math.abs(e.nodeId-i)*propagation_delay + e.time
                     && node_events[i].time < Math.abs(e.nodeId-i)*propagation_delay + e.time + transmission_delay) {
@@ -309,7 +320,7 @@ public class Simulator {
                         new Delay(
                                 i,
                                 Delay.BUSBUSY,
-                                node_events[i].time + RandomGenerator.exp_backoff_period(bus_busy_count[i], 1/R)));
+                                e.time + Math.abs(e.nodeId-i)*propagation_delay + RandomGenerator.exp_backoff_period(bus_busy_count[i], 1/R)));
                 }
 
             }
@@ -319,12 +330,22 @@ public class Simulator {
         if (collisionsWithCurrentNode) {
             collision_count[e.nodeId]++;
             //attempt_count++;
-
+            // addPersistentBusyWait(Math.abs(e.nodeId-i)*propagation_delay + e.time + discoveryDelay);
             affectedNodes.add(
                     new Delay(
                             e.nodeId,
                             Delay.COLLISION,
-                            e.time + RandomGenerator.exp_backoff_period(collision_count[e.nodeId], 1/R)));
+                            e.time + discoveryDelay + RandomGenerator.exp_backoff_period(collision_count[e.nodeId], 1/R)));
+
+            for (int i=0;i<node_events.length; i++) {
+                //if (mode.equals(PERSISTENT) && collision_count[i] <= 10) {
+                    affectedNodes.add(
+                            new Delay(
+                                    i,
+                                    Delay.COLLISIONWAIT,
+                                    e.time + transmission_delay));
+                //}
+            }
         }
 
         // Insert collision event if time comparison yielded results
