@@ -1,4 +1,6 @@
 import java.util.PriorityQueue;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Random;
 
 public class PersistentCSMACD {
@@ -43,21 +45,24 @@ public class PersistentCSMACD {
      * */
     public static double T_max = 1000;
 
+    // Random generator
+    public static Random rand;
+
     public static void main(String[] args) {
         parseInput(args);
 
         System.out.println("N       Efficiency      Throughput");
 
         for (int i_N=N_arg_start; i_N<=N_arg_end; i_N+=N_step) {
+            rand = new Random();
             Simulator simulator = new Simulator(i_N, A, L, R, S, D);
 
-            for (int i=0; i<i_N; i++) {
-                simulator.insertEvent(i, 0, exp_random_variable(simulator.A));
-            }
+            double currentTime = simulator.getNextInTime();
 
-            do {
+            while (currentTime != -1 && currentTime < T_max) {
                 simulator.advance();
-            } while (simulator.get_current_time() < T_max);
+                currentTime = simulator.getNextInTime();
+            }
 
             System.out.println(i_N + ",   " + (double)simulator.successful_attempt_count/simulator.attempt_count
                     + ",  " + (double)simulator.successful_attempt_count*L/(T_max*1000000));
@@ -126,10 +131,7 @@ public class PersistentCSMACD {
             private int[] collision_count;
 
             // Priority queue containing all scheduled events
-            private PriorityQueue<Arrival> all_events;
-
-            // Array of events tied by nodeId of the node they happen at
-            private Arrival[] node_events;
+            private List<PriorityQueue<Double>> all_events;
 
             public Simulator(int N, double A, int L, double R, double S, double D) {
                 this.A = A;
@@ -143,206 +145,157 @@ public class PersistentCSMACD {
 
                 this.collision_count = new int[N];
 
-                // we use processing time of packet, since this is when transmission attempts happen
-                all_events = new PriorityQueue<>(N, (Arrival a1, Arrival a2)-> {
-                    if (a1.processingTime > a2.processingTime) return 1;
-                    else if (a1.processingTime <= a2.processingTime) return -1;
-                    return 0;
-                });
+                all_events = new ArrayList<PriorityQueue<Double>>();
 
-                node_events = new Arrival[N];
+                // preschedule all arrivals
+                for (int i=0; i<N; i++) {
+                    PriorityQueue<Double> pq = new PriorityQueue<>();
+
+                    double currentTime = 0;
+                    while (currentTime < T_max) {
+                        currentTime += expRandomVariable(A);
+                        pq.add(currentTime);
+                    }
+
+                    all_events.add(pq);
+                }
             }
 
-            // add new packet arrival into queue and update pointers from nodes
-            public void insertEvent(int nodeId, double processingTime, double arrivalTime) {
-                Arrival newEvent = new Arrival(processingTime, arrivalTime, nodeId);
+            public Double getNextInTime() {
+                Double next = -1.0;
 
-                all_events.add(newEvent);
-                node_events[newEvent.nodeId] = newEvent;
-            }
+                for (int i=0; i<all_events.size(); i++) {
+                    Double current = all_events.get(i).peek();
+                    if (next == -1 || (current != -1 && current < next)) {
+                        next = current;
+                    }
+                }
 
-            // get next event in queue but do not remove it yet
-            // decoupled from handleArrival() because we used to have different kinds of events
-            public void advance() {
-                Arrival a = all_events.peek();
-
-                if (a == null) {
+                if (next == -1) {
                     System.out.println("No more events in queue!");
-                    return;
                 }
 
-                handleArrival(a);
+                return next;
             }
 
-            // used to run simulator until max simulation time
-            public double get_current_time() {
-                Arrival a = all_events.peek();
-                return a != null ? a.processingTime : -1;
-            }
+            public int getNextNode() {
+                Double next = getNextInTime();
 
-            // handle arrival; update stats and insert new packet arrival upon success
-            private void handleArrival(Arrival a) {
-                boolean collisionsWithCurrentNode = processCollisions(a);
-
-                if (!collisionsWithCurrentNode) {
-                    attempt_count++;
-                    successful_attempt_count++;
-
-                    insertEvent(
-                            a.nodeId,
-                            a.processingTime + transmission_delay,
-                            a.arrivalTime + exp_random_variable(A));
-
-                    all_events.remove(a);
-                    collision_count[a.nodeId] = 0;
+                for (int i=0; i<all_events.size(); i++) {
+                    if (next == all_events.get(i).peek()) return i;
                 }
+
+                return -1;
             }
 
             // change processing time of next packet in some node
             private void changeEventTime(int id, double newTime) {
-                Arrival target = node_events[id];
-
-                if (!all_events.contains(target)) {
-                    System.out.println("Event queue does not contain the target event!");
+                if (all_events.get(id).isEmpty()) {
+                    System.out.println("Node queue does not contain any more arrivals!");
                     return;
-                } else if (target.processingTime > newTime) {
+                } else if (all_events.get(id).peek() > newTime) {
                     // We don't want to change time to an earlier timestamp
                     return;
                 }
 
-                all_events.remove(target);
-                target.processingTime = newTime;
-                all_events.add(target);
-            }
-
-            // drop packet from a node's queue, schedule a new one since we do not preschedule arrivals
-            private void dropPacket(int nodeId) {
-                collision_count[nodeId] = 0;
-                all_events.remove(node_events[nodeId]);
-                Arrival a = node_events[nodeId];
-
-                insertEvent(nodeId, a.processingTime, a.arrivalTime + exp_random_variable(A));
+                all_events.get(id).remove();
+                all_events.get(id).add(newTime);
             }
 
             // compare processing time of next packet in each node to sender node, implement delays accordingly
             // returns true if there was a collision, false if none
-            private boolean processCollisions(Arrival a) {
+            private void advance() {
+                Double currentArrival = getNextInTime();
+                int currentNode = getNextNode();
+
                 boolean collisionsWithCurrentNode = false;
-
-                // used to compute collision backoff for sender node
                 double discoveryDelay = transmission_delay;
+                attempt_count++; // for current sender node
 
-                for (int i=0;i<node_events.length; i++) {
-                    if (node_events[i].equals(a) || node_events[i] == null) {
+                for (int i=0;i<all_events.size(); i++) {
+                    Double peerArrival = all_events.get(i).peek();
+                    if (currentArrival == peerArrival || peerArrival == null) {
                         continue;
                     }
 
                     // check for collision
-                    if (node_events[i].processingTime < Math.abs(a.nodeId-i)*propagation_delay + a.processingTime) {
+                    if (peerArrival <= Math.abs(currentNode-i)*propagation_delay + currentArrival) {
                         collisionsWithCurrentNode = true;
-                        attempt_count++;
+                        attempt_count++; //for each collision
                         collision_count[i]++;
 
-                        discoveryDelay = Math.min(Math.abs(a.nodeId-i)*propagation_delay, discoveryDelay);
+                        discoveryDelay = Math.min(Math.abs(currentNode-i)*propagation_delay, discoveryDelay);
 
                         if (collision_count[i] > 10) {
-                            dropPacket(i);
+                            all_events.get(i).remove();
+                            collision_count[i] = 0;
                         } else {
-                            changeEventTime(i,
-                                    a.processingTime
-                                            + Math.abs(a.nodeId-i)*propagation_delay
-                                            + exp_backoff_period(collision_count[i], 1/R));
-                        }
+                            double currentWaitTime = currentArrival
+                                    + Math.abs(currentNode-i)*propagation_delay
+                                    + expBackoffPeriod(collision_count[i], 1/R);
 
-                        // check for bus busy
-                    } else if (node_events[i].processingTime >= Math.abs(a.nodeId-i)*propagation_delay + a.processingTime
-                            && node_events[i].processingTime <= Math.abs(a.nodeId-i)*propagation_delay + a.processingTime + transmission_delay) {
-                        changeEventTime(i,
-                                a.processingTime
-                                        + Math.abs(a.nodeId-i)*propagation_delay
-                                        + transmission_delay);
+                            while (all_events.get(i).peek() < currentWaitTime) {
+                                changeEventTime(i, currentWaitTime);
+                            }
+                        }
                     }
                 }
-
-                // For persistent mode, implement bus busy delay for all nodes
-                // this delay has meaning for nodes that "see" a collision, but were not involved
-                for (int i = 0; i < node_events.length; i++) {
-                    changeEventTime(i,
-                            a.processingTime // should be discoveryDelay
-                                    + transmission_delay
-                                    + Math.abs(a.nodeId - i) * propagation_delay);
-                    }
 
                 // Transmitting node is affected too
                 if (collisionsWithCurrentNode) {
-                    collision_count[a.nodeId]++;
-                    attempt_count++;
+                    collision_count[currentNode]++;
 
-                    if (collision_count[a.nodeId] > 10) {
-                        dropPacket(a.nodeId);
+                    if (collision_count[currentNode] > 10) {
+                        all_events.get(currentNode).remove();
+                        collision_count[currentNode] = 0;
                     } else {
-                        changeEventTime(a.nodeId,
-                                a.processingTime
-                                        + discoveryDelay
-                                        + exp_backoff_period(collision_count[a.nodeId], 1/R));
+                        double currentWaitTime = currentArrival
+                                + discoveryDelay
+                                + expBackoffPeriod(collision_count[currentNode], 1/R);
+
+                        while (all_events.get(currentNode).peek() < currentWaitTime) {
+                            changeEventTime(currentNode, currentWaitTime);
+                        }
                     }
+                } else {
+                    successful_attempt_count++;
+
+                    all_events.get(currentNode).remove();
+                    collision_count[currentNode] = 0;
                 }
 
-                return collisionsWithCurrentNode;
+                for (int i=0; i<all_events.size(); i++) {
+                    double currentWaitTime = currentArrival
+                            + Math.abs(currentNode-i)*propagation_delay
+                            + discoveryDelay;
+
+                    while (all_events.get(i).peek() < currentWaitTime) {
+                        changeEventTime(i, currentWaitTime);
+                    }
+                }
             }
     }
-
-    private static class Arrival{
-
-        /*
-         * The time when the packet arrives in the node's queue
-         * */
-        private double arrivalTime;
-
-        /*
-         * The time when the packet is processed
-         * */
-        private double processingTime;
-
-        /*
-         * Id of the node the packet belongs to
-         * */
-        private int nodeId;
-
-        public Arrival(double processingTime, double arrivalTime, int nodeId) {
-            if (arrivalTime >= processingTime) {
-                this.processingTime = arrivalTime;
-            } else {
-                this.processingTime = processingTime;
-            }
-
-            this.arrivalTime = arrivalTime;
-            this.nodeId = nodeId;
-        }
-    }
-
 
     /*
      * Random variable generation functions
      * */
 
-    public static double uniform_random_variable() {
+    public static double uniformRandomVariable() {
         return Math.random();
     }
 
     // generate random uniformly distributed int between 0 and upperBound (excluded)
-    public static int uniform_random_int(int upperBound) {
-        Random r = new Random();
-        return r.nextInt(upperBound);
+    public static int uniformRandomInt(int upperBound) {
+        return rand.nextInt(upperBound);
     }
 
     // generate random exponentially distributed double
-    public static double exp_random_variable(double lambda) {
-        return Math.log(1.0 - uniform_random_variable())*(-1.0/lambda);
+    public static double expRandomVariable(double lambda) {
+        return Math.log(1.0 - uniformRandomVariable())*(-1.0/lambda);
     }
 
     // generate exponential backoff period according to CSMA/CD
-    public static double exp_backoff_period(int i, double bit_time) {
-        return uniform_random_int((int)Math.pow(2, i))*bit_time*512;
+    public static double expBackoffPeriod(int i, double bit_time) {
+        return uniformRandomInt((int)Math.pow(2, i))*bit_time*512;
     }
 }

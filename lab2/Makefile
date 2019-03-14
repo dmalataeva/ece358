@@ -4,7 +4,7 @@ JC = javac
 .java.class:
 		$(JC) $(JFLAGS) $*.java
 
-default: classes
+lab2: classes
 	
 CLASSES = \
         PersistentCSMACD.java \
